@@ -85,3 +85,22 @@ def kirsch_filter(img, kernel_size=5):
         img_out = img_out + img_filter[i]
     return img_out
 
+def draw_quadratic(img, abc, limit, color=(0, 0, 255)):
+    canvas = img.copy()
+    height, width = canvas.shape[:2]
+    a, b, c = abc
+    for x in np.arange(limit[0], limit[1], 0.5):
+        y = int(a * x**2 + b * x + c)
+        if 0 <= y < height:
+            canvas = cv2.circle(canvas,(int(x), y), 5, color, -1)
+    return canvas
+
+def draw_equation(img, ab, limit, color=(0, 0, 255)):
+    canvas = img.copy()
+    height, width = canvas.shape[:2]
+    a, b = ab
+    for x in  np.arange(limit[0], limit[1], 0.5):
+        y = int(a * x + b)
+        if 0 <= y < height:
+            canvas = cv2.circle(canvas,(int(x), y), 5, color, -1)
+    return canvas

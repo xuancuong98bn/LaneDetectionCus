@@ -8,29 +8,42 @@ import numpy as np
 import detectLane
 
 # import opencv
-import cv2 as cv
+import cv2
 
 detect = detectLane.Detected_Lane()
 
+def save(cap):
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    # fourcc = cv2.VideoWriter_fourcc(*'h264')
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    out = cv2.VideoWriter('output.avi', fourcc, 60.0, (width,  height))
+    # out = cv2.VideoWriter('output.mp4', fourcc, 60.0, (width,  height))
+
 def main(args):
-    
-    img = cv.imread("image_500.jpg")
-    if img is None:
-        sys.exit("Could not read the image.")
-    scale_percent = 1920/img.shape[1] * 100 # percent of original size
-    width = int(img.shape[1] * scale_percent / 100)
-    height = int(img.shape[0] * scale_percent / 100)
-    dim = (width, height)
-    # resize image
-    resized = cv.resize(img, dim, interpolation=cv.INTER_AREA)
-    cv.imshow("Display window", resized)
+    cap = cv2.VideoCapture('Video14.mp4')
+    capture = -1
+    if cap.isOpened():
+        while True:
+            try:
+                ret, frame = cap.read()
+                if not ret:
+                    print("Exiting ...")
+                    break
+                capture = capture + 1
+                if capture % 2 == 0:
+                    detect.process(frame)
 
-    detect.detect(resized)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+                time.sleep(0.2)
+            except:
+                pass
 
-    k = cv.waitKey(0)
-    if k == ord("s"):
-        cv.imwrite("out1.png", img)
-    cv.destroyAllWindows()
+    # Release everything if job is finished
+    cap.release()
+    cv2.destroyAllWindows()
 
         
 

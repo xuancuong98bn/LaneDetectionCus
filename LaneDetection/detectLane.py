@@ -15,20 +15,15 @@ import CameraCalibration as CamCali
 import cv2
 
 class Detected_Lane:
-    leftLine = Line.Line()
-    rightLine = Line.Line()
-    space_accept = []
-
     # constructor
     def __init__(self):
-        a = 1
+        self.leftLine = Line.Line()
+        self.rightLine = Line.Line()
+        self.space_accept = []
 
     def calc_line_fits(self, img):
-
-        ym_per_pix = 3*8/720 # meters per pixel in y dimension, 8 lines (5 spaces, 3 lines) at 10 ft each = 3m
-        xm_per_pix = 3.7/550 # meters per pixel in x dimension, lane width is 12 ft = 3.7 meters
         ### Settings
-        # Choose the number of sliding windows
+        # Number of sliding windows
         nwindows = 9
         # Set the width of the windows +/- margin
         margin = 20
@@ -60,15 +55,11 @@ class Detected_Lane:
         # Create empty lists to receive left and right lane pixel indices
         left_lane_inds = []
         right_lane_inds = []
-        middle_lane_inds = []
-        middle_lane_inds.append((leftx_base+rightx_base)//2)
 
         min_x_left = width
         max_x_left = 0
         min_x_right = width
         max_x_right = 0
-        min_x_mid = width
-        max_x_mid = 0
 
         # Step through the windows one by one
         for window in range(nwindows):
@@ -94,8 +85,6 @@ class Detected_Lane:
             good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xleft_low) & (nonzerox < win_xleft_high)).nonzero()[0]
             good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xright_low) & (nonzerox < win_xright_high)).nonzero()[0]
 
-            middle_lane_inds.append(np.uint((np.mean(good_left_inds)+np.mean(good_right_inds))//2))
-            print(middle_lane_inds)
             # Append these indices to the lists
             left_lane_inds.append(good_left_inds)
             right_lane_inds.append(good_right_inds)
@@ -117,17 +106,9 @@ class Detected_Lane:
         lefty = nonzeroy[left_lane_inds]
         rightx = nonzerox[right_lane_inds]
         righty = nonzeroy[right_lane_inds]
-        midx = nonzerox[middle_lane_inds]
-        midy = nonzeroy[middle_lane_inds]
-        a = np.column_stack((leftx, lefty))
-        b = np.column_stack((rightx, righty))
 
-        # print(len(a))
-        # print(len(b))
-        # cv2.polylines(img, a, True, (255,0,0), 1)
-        # cv2.polylines(img, b, True, (0,0,255), 1)
-        # cv2.imshow('img', img)
-
+        # a = np.column_stack((leftx, lefty))
+        # b = np.column_stack((rightx, righty))
         # Fit a second order polynomial to each
         try:
             left_fit = np.polyfit(leftx, lefty, 2)
@@ -140,22 +121,19 @@ class Detected_Lane:
             right_fit = None
 
         try:
-            mid_fit = np.polyfit(midx, midy, 1)
+            left_fit_e = np.polyfit(leftx, lefty, 1)
         except np.RankWarning:
-            mid_fit = None
+            left_fit_e = None
 
-        # print(left_fit)
-        # print(right_fit)
-        # Fit a second order polynomial to each
-        # left_fit_m = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
-        # right_fit_m = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
-        left_fit_m = 0
-        right_fit_m = 0
+        try:
+            right_fit_e = np.polyfit(rightx, righty, 1)
+        except np.RankWarning:
+            right_fit_e = None
 
         out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [0, 0, 255]
         out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [255, 0, 0]
 
-        return left_fit, right_fit, mid_fit, left_fit_m, right_fit_m, out_img, a, b, leftx, rightx, midx
+        return left_fit, right_fit, left_fit_e, right_fit_e, out_img, leftx, rightx
 
     def __get_left_line__(self):
         best_fit_px, best_fit_m = self.leftLine.__get_line__()
@@ -167,34 +145,6 @@ class Detected_Lane:
     
     def __get_space_accept__(self):
         return self.space_accept
-
-    def draw_arrpoint(self, img, arr, color=(0, 0, 255)):
-        canvas = img.copy()
-        for m in arr:
-            y = m[1]
-            x = m[0]
-            canvas[y][x] = color
-        return canvas
-
-    def draw_quadratic(self, img, abc, limit, color=(0, 0, 255)):
-        canvas = img.copy()
-        height, width = canvas.shape[:2]
-        a, b, c = abc
-        for x in range(limit[0], limit[1]):
-            y = int(a * x**2 + b * x + c)
-            if 0 <= y < height:
-                canvas[y][x] = color
-        return canvas
-
-    def draw_equation(self, img, ab, limit, color=(0, 0, 255)):
-        canvas = img.copy()
-        height, width = canvas.shape[:2]
-        a, b = ab
-        for x in range(limit[0], limit[1]):
-            y = int(a * x + b)
-            if 0 <= y < height:
-                canvas[y][x] = color
-        return canvas
 
     def slice_road(self, image, SKY_LINE = 120, HALF_ROAD = 95, CAR_LINE = 0):
         height, width = image.shape[:2]
@@ -209,7 +159,7 @@ class Detected_Lane:
         IMAGE_W3_TF = 0 - HALF_ROAD - 10
         IMAGE_W4_TF = IMAGE_W + HALF_ROAD + 10
 
-        src = np.float32([[SRC_W1, 425], [SRC_W2, 425], [0, IMAGE_H], [width, IMAGE_H]])
+        src = np.float32([[SRC_W1, 435], [SRC_W2, 435], [0, IMAGE_H], [width, IMAGE_H]])
         dst = np.float32([[IMAGE_W1_TF + 12, 0], [IMAGE_W2_TF - 12, 0], [IMAGE_W1_TF, height], [IMAGE_W2_TF, height]])
         image = image[SKY_LINE:(SKY_LINE + IMAGE_H - CAR_LINE), 0:IMAGE_W]  # Apply np slicing for ROI crop
 
@@ -220,9 +170,9 @@ class Detected_Lane:
         return warper_img
 
     # callback function for processing image
-    def detect(self, image):
-        #calibration = CamCali.CameraCalibration('camera_cal', 9, 6)
-        #cam = calibration.undistort(image)
+    def preprocess(self, image):
+        # calibration = CamCali.CameraCalibration('camera_cal', 9, 6)
+        # cam = calibration.undistort(image)
         warper_img = self.slice_road(image)
 
         line_normal = Utils.binary_HSV(warper_img)
@@ -236,33 +186,47 @@ class Detected_Lane:
 
         canny_img = Utils.run_canny(warper_img)
         #cv2.imshow('canny_img', canny_img)
-        test_img = cv2.bitwise_and(canny_img, result_img)
-        #cv2.imshow('test_img', test_img)
+        test_img = cv2.bitwise_or(canny_img, result_img)
+        #cv2.imshow('test_img', test_img)\
+        return test_img
 
-        left_fit, right_fit, mid_fit, left_fit_m, right_fit_m, out_img, a, b, leftx, rightx, midx = self.calc_line_fits(result_img)
+    def detect(self, origin_img, result_img):
+        left_fit, right_fit, left_fit_e, right_fit_e, out_img, leftx, rightx = self.calc_line_fits(result_img)
 
-        self.leftLine.__add_new_fit__(left_fit, left_fit_m)
-        self.rightLine.__add_new_fit__(right_fit, right_fit_m)
-        #cv2.imshow('out_img', out_img)
-        # cv2.imwrite("out_img", out_img)
-        #
-        d, e, f = left_fit
-        x, y, z = right_fit
+        quadratic_img = np.zeros_like(out_img)
+        quadratic_img = Utils.draw_quadratic(quadratic_img, left_fit, (min(leftx), max(leftx)))
+        quadratic_img = Utils.draw_quadratic(quadratic_img, right_fit, (min(rightx), max(rightx)), color=(255, 0, 0))
 
-        m = 2*d*x
-        n = e*x+y*d
-        r = d*z/2 + x*f/2 + e*y/4 - (np.sqrt(d**2 * y**2 - 4 * d**2 * x * z) * np.sqrt(x**2 * e**2 - 4 * d * x**2 * f))/(4*d*x)
-        # mid = m, n, r
-        mid = mid_fit
-        canvas = np.zeros_like(out_img)
-        canvas = self.draw_quadratic(canvas, left_fit, (min(leftx), max(leftx)))
-        canvas = self.draw_quadratic(canvas, right_fit, (min(rightx), max(rightx)), color=(255, 0, 0))
-        canvas = self.draw_equation(canvas, mid, (0, 1024), (0, 255, 0))
-        cv2.imshow('canvas', canvas+out_img)#(max(leftx), min(rightx))
+        equation_img = np.zeros_like(out_img)
+        equation_img = Utils.draw_equation(equation_img, left_fit_e, (0, origin_img.shape[1]))
+        equation_img = Utils.draw_equation(equation_img, right_fit_e, (0, origin_img.shape[1]), color=(255, 0, 0))
 
-        # arrr = np.zeros_like(out_img)
-        # arrr = self.draw_arrpoint(arrr, a)
-        # arrr = self.draw_arrpoint(arrr, b, color=(255, 0, 0))
-        #
-        # cv2.imshow('arrr', arrr)
-        #cv2.waitKey(0)
+        # canvas = Utils.draw_equation(canvas, mid, (0, 1024), (0, 255, 0))
+        return quadratic_img, equation_img, out_img #(max(leftx), min(rightx))
+
+    def resize_prepro(self, image):
+        if image is not None:
+            scale_percent = 1920 / image.shape[1] * 100  # percent of original size
+            width = int(image.shape[1] * scale_percent / 100)
+            height = int(image.shape[0] * scale_percent / 100)
+            dim = (width, height)
+            # resize image
+            resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+            return resized
+
+
+    def process(self, frame):
+        if frame is not None:
+            resized = self.resize_prepro(frame)
+            cv2.imshow("Display window", resized)
+
+            pre_img = self.preprocess(resized)
+            quadratic_img, equation_img, out_img = self.detect(resized, pre_img)
+
+            dim2 = (int(quadratic_img.shape[0] / 1.5), int(quadratic_img.shape[1] / 3))
+            resized1 = cv2.resize(quadratic_img, dim2, interpolation=cv2.INTER_AREA)
+            resized2 = cv2.resize(equation_img, dim2, interpolation=cv2.INTER_AREA)
+            resized3 = cv2.resize(out_img, dim2, interpolation=cv2.INTER_AREA)
+            cv2.imshow("Processed window 1", resized1)
+            cv2.imshow("Processed window 2", resized2)
+            cv2.imshow("Processed window 3", resized3)
