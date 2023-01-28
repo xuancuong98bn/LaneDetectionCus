@@ -187,15 +187,18 @@ class Detected_Lane:
         canny_img = Utils.run_canny(warper_img)
         #cv2.imshow('canny_img', canny_img)
         test_img = cv2.bitwise_or(canny_img, result_img)
-        #cv2.imshow('test_img', test_img)\
+        #cv2.imshow('test_img', test_img)
         return test_img
 
     def detect(self, origin_img, result_img):
         left_fit, right_fit, left_fit_e, right_fit_e, out_img, leftx, rightx = self.calc_line_fits(result_img)
 
+        self.leftLine.__add_new_fit__(left_fit, leftx)
+        self.rightLine.__add_new_fit__(right_fit, rightx)
+
         quadratic_img = np.zeros_like(out_img)
-        quadratic_img = Utils.draw_quadratic(quadratic_img, left_fit, (min(leftx), max(leftx)))
-        quadratic_img = Utils.draw_quadratic(quadratic_img, right_fit, (min(rightx), max(rightx)), color=(255, 0, 0))
+        quadratic_img = Utils.draw_quadratic(quadratic_img, self.leftLine.__get_line__(), (min(leftx), max(leftx)))
+        quadratic_img = Utils.draw_quadratic(quadratic_img, self.rightLine.__get_line__(), (min(rightx), max(rightx)), color=(255, 0, 0))
 
         equation_img = np.zeros_like(out_img)
         equation_img = Utils.draw_equation(equation_img, left_fit_e, (0, origin_img.shape[1]))
@@ -225,8 +228,8 @@ class Detected_Lane:
 
             dim2 = (int(quadratic_img.shape[0] / 1.5), int(quadratic_img.shape[1] / 3))
             resized1 = cv2.resize(quadratic_img, dim2, interpolation=cv2.INTER_AREA)
-            resized2 = cv2.resize(equation_img, dim2, interpolation=cv2.INTER_AREA)
+            # resized2 = cv2.resize(equation_img, dim2, interpolation=cv2.INTER_AREA)
             resized3 = cv2.resize(out_img, dim2, interpolation=cv2.INTER_AREA)
             cv2.imshow("Processed window 1", resized1)
-            cv2.imshow("Processed window 2", resized2)
+            # cv2.imshow("Processed window 2", resized2)
             cv2.imshow("Processed window 3", resized3)

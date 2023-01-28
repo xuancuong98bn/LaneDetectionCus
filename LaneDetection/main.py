@@ -37,15 +37,13 @@ def main(args):
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-                time.sleep(0.2)
-            except:
-                pass
+                # time.sleep(0.2)
+            except Exception as e:
+                logging.exception(e)
 
     # Release everything if job is finished
     cap.release()
     cv2.destroyAllWindows()
-
-        
 
 if __name__ == '__main__':
     try:
