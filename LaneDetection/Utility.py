@@ -3,7 +3,7 @@ import numpy as np
 
 def warper(img, src, dst):
     # Compute and apply perpective transform
-    img_size = (img.shape[1], img.shape[0] + 90)
+    img_size = (img.shape[1], img.shape[0])
     M = cv2.getPerspectiveTransform(src, dst)
     warped = cv2.warpPerspective(img, M, img_size)  # keep same size as input image
     return warped
@@ -65,6 +65,22 @@ def run_canny(img, kernel_size=5, low_thresh=50, high_thresh=150):
 
     return cannyImage
 
+def houghlines_trans(img, rho=1, theta=np.pi/180, threshold = 50, minLineLength=5, maxLineGap=250):
+    # Run the canny edge detection
+    cannyImage = run_canny(img)
+
+    lines = cv2.HoughLinesP(cannyImage, rho, theta, threshold, minLineLength, maxLineGap)
+    if lines is not None:
+        for line in lines:
+            print(line)
+            x1, y1, x2, y2 = line[0]
+            cv2.line(cannyImage, (x1, y1), (x2, y2), (255, 0, 0), 30)
+            # cv2.waitKey(0)
+            # if (y1 > 200 or y2 > 200):  # Filter out the lines in the top of the image
+            #     cv2.line(cannyImage, (x1, y1), (x2, y2), (255, 0, 0), 3)
+
+    return cannyImage
+
 def kirsch_filter(img, kernel_size=5):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     gausImage = gaussian_blur(gray, kernel_size)
@@ -104,3 +120,8 @@ def draw_equation(img, ab, limit, color=(0, 0, 255)):
         if 0 <= y < height:
             canvas = cv2.circle(canvas,(int(x), y), 5, color, -1)
     return canvas
+
+def imshow(name, img, size):
+    dim = (int(img.shape[0] * size[0]), int(img.shape[1] * size[1]))
+    resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+    cv2.imshow(name, resized)

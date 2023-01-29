@@ -37,7 +37,7 @@ def main(args):
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-                # time.sleep(0.2)
+                # time.sleep(0.5)
             except Exception as e:
                 logging.exception(e)
 

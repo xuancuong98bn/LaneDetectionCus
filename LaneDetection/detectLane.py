@@ -146,9 +146,9 @@ class Detected_Lane:
     def __get_space_accept__(self):
         return self.space_accept
 
-    def slice_road(self, image, SKY_LINE = 120, HALF_ROAD = 95, CAR_LINE = 0):
+    def slice_road(self, image, SKY_LINE = 555, HALF_ROAD = 110, CAR_LINE = 0):
         height, width = image.shape[:2]
-        IMAGE_H = height - SKY_LINE - CAR_LINE
+        IMAGE_H = height - CAR_LINE
         IMAGE_W = width
 
         SRC_W1 = IMAGE_W / 2 - HALF_ROAD / 2
@@ -156,12 +156,10 @@ class Detected_Lane:
 
         IMAGE_W1_TF = IMAGE_W / 2 - HALF_ROAD
         IMAGE_W2_TF = IMAGE_W / 2 + HALF_ROAD
-        IMAGE_W3_TF = 0 - HALF_ROAD - 10
-        IMAGE_W4_TF = IMAGE_W + HALF_ROAD + 10
 
-        src = np.float32([[SRC_W1, 435], [SRC_W2, 435], [0, IMAGE_H], [width, IMAGE_H]])
-        dst = np.float32([[IMAGE_W1_TF + 12, 0], [IMAGE_W2_TF - 12, 0], [IMAGE_W1_TF, height], [IMAGE_W2_TF, height]])
-        image = image[SKY_LINE:(SKY_LINE + IMAGE_H - CAR_LINE), 0:IMAGE_W]  # Apply np slicing for ROI crop
+        src = np.float32([[SRC_W1, SKY_LINE], [SRC_W2, SKY_LINE], [0, IMAGE_H], [width, IMAGE_H]])
+        dst = np.float32([[IMAGE_W1_TF, 0], [IMAGE_W2_TF, 0], [IMAGE_W1_TF, IMAGE_H], [IMAGE_W2_TF, IMAGE_H]])
+        image = image[0:(height - CAR_LINE), 0:IMAGE_W]  # Apply np slicing for ROI crop
 
         warper_img = Utils.warper(image, src, dst)
         # cv2.imshow('warper_img', warper_img)
@@ -185,7 +183,8 @@ class Detected_Lane:
         #cv2.imshow('result_img', result_img)
 
         canny_img = Utils.run_canny(warper_img)
-        #cv2.imshow('canny_img', canny_img)
+        # cv2.imshow('canny_img', canny_img)
+
         test_img = cv2.bitwise_or(canny_img, result_img)
         #cv2.imshow('test_img', test_img)
         return test_img
@@ -197,8 +196,8 @@ class Detected_Lane:
         self.rightLine.__add_new_fit__(right_fit, rightx)
 
         quadratic_img = np.zeros_like(out_img)
-        quadratic_img = Utils.draw_quadratic(quadratic_img, self.leftLine.__get_line__(), (min(leftx), max(leftx)))
-        quadratic_img = Utils.draw_quadratic(quadratic_img, self.rightLine.__get_line__(), (min(rightx), max(rightx)), color=(255, 0, 0))
+        quadratic_img = Utils.draw_quadratic(quadratic_img, self.leftLine.__get_line__(), self.leftLine.__get_limitx__())
+        quadratic_img = Utils.draw_quadratic(quadratic_img, self.rightLine.__get_line__(), self.rightLine.__get_limitx__(), color=(255, 0, 0))
 
         equation_img = np.zeros_like(out_img)
         equation_img = Utils.draw_equation(equation_img, left_fit_e, (0, origin_img.shape[1]))
@@ -209,9 +208,9 @@ class Detected_Lane:
 
     def resize_prepro(self, image):
         if image is not None:
-            scale_percent = 1920 / image.shape[1] * 100  # percent of original size
-            width = int(image.shape[1] * scale_percent / 100)
-            height = int(image.shape[0] * scale_percent / 100)
+            scale_percent = 1920 / image.shape[1]  # percent of original size
+            width = int(image.shape[1] * scale_percent)
+            height = int(image.shape[0] * scale_percent)
             dim = (width, height)
             # resize image
             resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
@@ -221,15 +220,11 @@ class Detected_Lane:
     def process(self, frame):
         if frame is not None:
             resized = self.resize_prepro(frame)
-            cv2.imshow("Display window", resized)
+            Utils.imshow("Display window", resized, (1, 1/3))
 
             pre_img = self.preprocess(resized)
             quadratic_img, equation_img, out_img = self.detect(resized, pre_img)
 
-            dim2 = (int(quadratic_img.shape[0] / 1.5), int(quadratic_img.shape[1] / 3))
-            resized1 = cv2.resize(quadratic_img, dim2, interpolation=cv2.INTER_AREA)
-            # resized2 = cv2.resize(equation_img, dim2, interpolation=cv2.INTER_AREA)
-            resized3 = cv2.resize(out_img, dim2, interpolation=cv2.INTER_AREA)
-            cv2.imshow("Processed window 1", resized1)
-            # cv2.imshow("Processed window 2", resized2)
-            cv2.imshow("Processed window 3", resized3)
+            Utils.imshow("Processed window 1", quadratic_img, (1,1/3))
+            # Utils.imshow("Processed window 2", equation_img, (1,1/3))
+            Utils.imshow("Processed window 3", out_img, (1,1/3))

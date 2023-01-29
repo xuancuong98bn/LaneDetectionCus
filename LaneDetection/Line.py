@@ -54,7 +54,7 @@ class Line():
             return False
         if self.diffs[1] > 2.5:
             return False
-        if self.diffs[2] > 1000.:
+        if self.diffs[2] > 10.:
             return False
         return True
 
