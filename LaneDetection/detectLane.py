@@ -19,7 +19,6 @@ class Detected_Lane:
     def __init__(self):
         self.leftLine = Line.Line()
         self.rightLine = Line.Line()
-        self.space_accept = []
 
     def calc_line_fits(self, img):
         ### Settings
@@ -97,10 +96,6 @@ class Detected_Lane:
         # Concatenate the arrays of indices
         left_lane_inds = np.concatenate(left_lane_inds)
         right_lane_inds = np.concatenate(right_lane_inds)
-        self.space_accept.append(min_x_left)
-        self.space_accept.append(max_x_left)
-        self.space_accept.append(min_x_right)
-        self.space_accept.append(max_x_right)
         # Extract left and right line pixel positions
         leftx = nonzerox[left_lane_inds]
         lefty = nonzeroy[left_lane_inds]
@@ -112,22 +107,22 @@ class Detected_Lane:
         # Fit a second order polynomial to each
         try:
             left_fit = np.polyfit(leftx, lefty, 2)
-        except np.RankWarning:
+        except:
             left_fit = None
 
         try:
             right_fit = np.polyfit(rightx, righty, 2)
-        except np.RankWarning:
+        except:
             right_fit = None
 
         try:
             left_fit_e = np.polyfit(leftx, lefty, 1)
-        except np.RankWarning:
+        except:
             left_fit_e = None
 
         try:
             right_fit_e = np.polyfit(rightx, righty, 1)
-        except np.RankWarning:
+        except:
             right_fit_e = None
 
         out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [0, 0, 255]
@@ -143,10 +138,7 @@ class Detected_Lane:
         best_fit_px, best_fit_m = self.rightLine.__get_line__()
         return best_fit_px
     
-    def __get_space_accept__(self):
-        return self.space_accept
-
-    def slice_road(self, image, SKY_LINE = 555, HALF_ROAD = 110, CAR_LINE = 0):
+    def slice_road(self, image, SKY_LINE = 555, HALF_ROAD = 110, CAR_LINE = 0): #14 555 110 // 21 700 110 // 8 600 110
         height, width = image.shape[:2]
         IMAGE_H = height - CAR_LINE
         IMAGE_W = width
@@ -162,9 +154,13 @@ class Detected_Lane:
         image = image[0:(height - CAR_LINE), 0:IMAGE_W]  # Apply np slicing for ROI crop
 
         warper_img = Utils.warper(image, src, dst)
-        # cv2.imshow('warper_img', warper_img)
+        warper_img = warper_img[0:(height - CAR_LINE), int(IMAGE_W / 2 - HALF_ROAD*2):int(IMAGE_W / 2 + HALF_ROAD*2)]
+
+        cv2.imshow('warper_img', warper_img)
         # unwarper_img = Utils.unwarp(warper_img, src, dst)
         # cv2.imshow('unwarper_img', unwarper_img)
+
+
         return warper_img
 
     # callback function for processing image
@@ -174,19 +170,19 @@ class Detected_Lane:
         warper_img = self.slice_road(image)
 
         line_normal = Utils.binary_HSV(warper_img)
-        #cv2.imshow('line_normal', line_normal)
+        # cv2.imshow('line_normal', line_normal)
 
         line_shadow = Utils.shadow_HSV(warper_img)
         #cv2.imshow('line_shadow', line_shadow)
 
-        result_img = line_normal + line_shadow
+        result_img = cv2.bitwise_or(line_normal, line_shadow)
         #cv2.imshow('result_img', result_img)
 
         canny_img = Utils.run_canny(warper_img)
         # cv2.imshow('canny_img', canny_img)
 
         test_img = cv2.bitwise_or(canny_img, result_img)
-        #cv2.imshow('test_img', test_img)
+        cv2.imshow('test_img', test_img)
         return test_img
 
     def detect(self, origin_img, result_img):
@@ -216,15 +212,45 @@ class Detected_Lane:
             resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
             return resized
 
-
     def process(self, frame):
         if frame is not None:
             resized = self.resize_prepro(frame)
-            Utils.imshow("Display window", resized, (1, 1/3))
+            Utils.imshow("Display window", resized, (1/2, 1/2))
 
             pre_img = self.preprocess(resized)
             quadratic_img, equation_img, out_img = self.detect(resized, pre_img)
 
-            Utils.imshow("Processed window 1", quadratic_img, (1,1/3))
+            Utils.imshow("Processed window 1", quadratic_img, (3/4, 3/4))
             # Utils.imshow("Processed window 2", equation_img, (1,1/3))
-            Utils.imshow("Processed window 3", out_img, (1,1/3))
+            Utils.imshow("Processed window 3", out_img, (3/4, 3/4))
+
+    def save_preprocess(self, image, folder):
+        # calibration = CamCali.CameraCalibration('camera_cal', 9, 6)
+        # cam = calibration.undistort(image)
+        warper_img = self.slice_road(image)
+        cv2.imwrite('./' + folder + '/' + 'warper_img' + '.jpg', warper_img)
+        line_normal = Utils.binary_HSV(warper_img)
+        # cv2.imshow('line_normal', line_normal)
+        cv2.imwrite('./' + folder + '/' + 'line_normal' + '.jpg', line_normal)
+        line_shadow = Utils.shadow_HSV(warper_img)
+        #cv2.imshow('line_shadow', line_shadow)
+        cv2.imwrite('./' + folder + '/' + 'line_shadow' + '.jpg', line_shadow)
+        result_img = line_normal + line_shadow
+        #cv2.imshow('result_img', result_img)
+        cv2.imwrite('./' + folder + '/' + 'result_img' + '.jpg', result_img)
+        canny_img = Utils.run_canny(warper_img)
+        # cv2.imshow('canny_img', canny_img)
+        cv2.imwrite('./' + folder + '/' + 'canny_img' + '.jpg', canny_img)
+        test_img = cv2.bitwise_or(canny_img, result_img)
+        cv2.imwrite('./' + folder + '/' + 'mix_img' + '.jpg', test_img)
+        return test_img
+
+    def save_process(self, frame, folder):
+        if frame is not None:
+            resized = self.resize_prepro(frame)
+            cv2.imwrite('./' + folder + '/' + 'resized' + '.jpg', resized)
+
+            pre_img = self.save_preprocess(resized, folder)
+            quadratic_img, equation_img, out_img = self.detect(resized, pre_img)
+            cv2.imwrite('./' + folder + '/' + 'quadratic_img' + '.jpg', quadratic_img)
+            cv2.imwrite('./' + folder + '/' + 'out_img' + '.jpg', out_img)

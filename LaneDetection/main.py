@@ -35,6 +35,9 @@ def main(args):
                 if capture % 2 == 0:
                     detect.process(frame)
 
+                # if capture == 515:
+                #     detect.save_process(frame, 'process_img')
+
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
                 # time.sleep(0.5)

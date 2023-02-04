@@ -31,6 +31,8 @@ class Line():
         return (int(self.limitx[0]), int(self.limitx[1]))
 
     def __add_new_fit__(self, new_fit_px, limitx):
+        if new_fit_px is None:
+            return
         if self.current_fit_px is None and self.previous_fits_px == []:
             self.current_fit_px = new_fit_px
             self.curent_limitx = limitx
